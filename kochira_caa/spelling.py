@@ -1,30 +1,6 @@
 """
 A tool for children to learn how to spell.
 
-Commands
-========
-
-Add Correction
---------------
-
-::
-
-    $bot: <word> should be spelled <correct_word>
-
-**Requires permission:** american
-
-Enables automatic spelling correction whenever someone says ``word``.
-
-Remove Correction
------------------
-
-::
-
-    $bot: forget how to spell <word>
-
-**Requires permission:** american
-
-Remove the correct spelling for ``word``.
 """
 
 import re
@@ -54,6 +30,17 @@ def initialize_model(bot):
 @service.command(r"forget how to spell (?P<word>.+)$", mention=True)
 @requires_permission("american")
 def remove_correction(client, target, origin, word):
+    """
+    Add Correction
+
+    ::
+
+        $bot: <word> should be spelled <correct_word>
+
+    **Requires permission:** american
+
+    Enables automatic spelling correction whenever someone says ``word``.
+    """
     if not Correction.select().where(Correction.word == word).exists():
         client.message(target, "{origin}: I'm not correcting \"{word}\".".format(
             origin=origin,
@@ -89,6 +76,17 @@ def do_correction(client, target, origin, message):
 @service.command(r"(?P<word>.+?) should be spelled (?P<replace>.+)$", mention=True)
 @requires_permission("american")
 def add_correction(client, target, origin, word, replace):
+    """
+    Remove Correction
+
+    ::
+
+        $bot: forget how to spell <word>
+
+    **Requires permission:** american
+
+    Remove the correct spelling for ``word``.
+    """
     if Correction.select().where(Correction.word == word).exists():
         client.message(target, "{origin}: I'm already correcting the spelling of {word}.".format(
             origin=origin,

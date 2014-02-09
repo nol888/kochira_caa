@@ -2,43 +2,6 @@
 kedo module.
 
 Allows mortals to learn from the tome of kedo.
-
-Commands
-========
-
-kedo
-----
-
-::
-
-    !kedo <topic>
-    $bot: kedo on <topic>
-
-Query the tome of kedo and return the results.
-
-kedolearn
----------
-::
-
-    !kedolearn <topic> : <knowledge>
-    $bot: kedo on <topic>: <knowledge>
-
-**Requires permission: kedo**
-
-Instill new knowledge into the tome of kedo. Multiple entries on the
-same topic are allowed.
-
-kedoforget
-----------
-::
-
-    !kedoforget <topic>
-    $bot: kedo no longer speaks of <topic>
-
-**Requires permission: kedo**
-
-Erase gospel from the tome of kedo. If multiple entries had been stored under
-the same topic, they are all removed.
 """
 
 from peewee import CharField, fn
@@ -66,6 +29,16 @@ def initialize_model(bot):
 @service.command(r"kedo on (?P<topic>[^:]+)$", mention=True)
 @service.command(r"!kedo (?P<topic>.+)$")
 def kedo(client, target, origin, topic):
+    """
+    kedo
+
+    ::
+
+        !kedo <topic>
+        $bot: kedo on <topic>
+
+    Query the tome of kedo and return the results.
+    """
     if not KedoBit.select().where(KedoBit.topic == topic).exists():
         client.message(target, "{origin}: kedo hasn't said anything about {topic} yet. poop.".format(
             origin=origin,
@@ -81,6 +54,19 @@ def kedo(client, target, origin, topic):
 @service.command(r"!kedolearn (?P<topic>.+) : (?P<knowledge>.+)$")
 @requires_permission("kedo")
 def kedo_learn(client, target, origin, topic, knowledge):
+    """
+    kedolearn
+
+    ::
+
+        !kedolearn <topic> : <knowledge>
+        $bot: kedo on <topic>: <knowledge>
+
+    **Requires permission: kedo**
+
+    Instill new knowledge into the tome of kedo. Multiple entries on the
+    same topic are allowed.
+    """
     KedoBit.create(topic=topic, knowledge=knowledge).save()
 
     client.message(target, "kedo now knows about \x02{topic}\x02!".format(topic=topic))
@@ -89,6 +75,19 @@ def kedo_learn(client, target, origin, topic, knowledge):
 @service.command(r"!kedoforget (?P<topic>.+)$")
 @requires_permission("kedo")
 def kedo_forget(client, target, origin, topic):
+    """
+    kedoforget
+
+    ::
+
+        !kedoforget <topic>
+        $bot: kedo no longer speaks of <topic>
+
+    **Requires permission: kedo**
+
+    Erase gospel from the tome of kedo. If multiple entries had been stored under
+    the same topic, they are all removed.
+    """
     KedoBit.delete().where(KedoBit.topic == topic).execute()
 
     client.message(target, "kedo no longer knows about \x02{topic}\x02.".format(topic=topic))
