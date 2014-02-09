@@ -1,10 +1,6 @@
 """
 A tool for children to learn how to spell.
 
-Configuration Options
-=====================
-None.
-
 Commands
 ========
 

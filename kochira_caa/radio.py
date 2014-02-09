@@ -1,15 +1,23 @@
 import requests
 
+from kochira import config
 from kochira.auth import requires_permission
 from kochira.service import Service, background
 from lxml import etree
 
 service = Service(__name__, __doc__)
 
+@service.config
+class Config(config.Config):
+    username = config.Field(doc="Username for HTTP basic auth.")
+    password = config.Field(doc="Password for HTTP basic auth.")
+    url = config.Field(doc="URL of the Icecast2 admin page.")
+    mount = config.Field(doc="Name of the Icecast2 mountpoint.")
+
 def _np(bot):
     config = service.config_for(bot)
-    mount = config["mount"]
-    r = etree.fromstring(requests.get(config["url"], auth=(config["username"], config["password"])).content)
+    mount = config.mount
+    r = etree.fromstring(requests.get(config.url, auth=(config.username, config.password)).content)
 
     mount_exists = bool(r.xpath("source[@mount='{}']".format(mount)))
     artist = r.xpath("source[@mount='{}']/artist/text()".format(mount))
