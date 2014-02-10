@@ -1,6 +1,5 @@
 """
 A tool for children to learn how to spell.
-
 """
 
 import re
@@ -32,12 +31,6 @@ def initialize_model(bot):
 def remove_correction(client, target, origin, word):
     """
     Add Correction
-
-    ::
-
-        $bot: <word> should be spelled <correct_word>
-
-    **Requires permission:** american
 
     Enables automatic spelling correction whenever someone says ``word``.
     """
@@ -79,12 +72,6 @@ def add_correction(client, target, origin, word, replace):
     """
     Remove Correction
 
-    ::
-
-        $bot: forget how to spell <word>
-
-    **Requires permission:** american
-
     Remove the correct spelling for ``word``.
     """
     if Correction.select().where(Correction.word == word).exists():
@@ -102,14 +89,11 @@ def add_correction(client, target, origin, word, replace):
         replace=replace
     ))
 
+
 @service.command(r"what can you spell\?$", mention=True)
 def list_corrections(client, target, origin):
     """
     List Corrections
-
-    ::
-
-        $bot: what can you spell?
 
     Lists all corrections.
     """

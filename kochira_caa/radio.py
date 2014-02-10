@@ -1,3 +1,8 @@
+"""
+CAA r/a/dio.
+
+Like 4chan, except CAA.
+"""
 import requests
 
 from kochira import config
@@ -31,6 +36,11 @@ def _np(bot):
 @requires_permission("caa_radio")
 @background
 def now_playing(client, target, origin):
+    """
+    Now playing.
+
+    Gets the metadata of the currently playing song.
+    """
     np = _np(client.bot)
     if not np:
         client.message(target, "\x02Now playing:\x02 Nothing!")

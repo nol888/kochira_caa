@@ -32,11 +32,6 @@ def kedo(client, target, origin, topic):
     """
     kedo
 
-    ::
-
-        !kedo <topic>
-        $bot: kedo on <topic>
-
     Query the tome of kedo and return the results.
     """
     if not KedoBit.select().where(KedoBit.topic == topic).exists():
@@ -57,13 +52,6 @@ def kedo_learn(client, target, origin, topic, knowledge):
     """
     kedolearn
 
-    ::
-
-        !kedolearn <topic> : <knowledge>
-        $bot: kedo on <topic>: <knowledge>
-
-    **Requires permission: kedo**
-
     Instill new knowledge into the tome of kedo. Multiple entries on the
     same topic are allowed.
     """
@@ -78,13 +66,6 @@ def kedo_forget(client, target, origin, topic):
     """
     kedoforget
 
-    ::
-
-        !kedoforget <topic>
-        $bot: kedo no longer speaks of <topic>
-
-    **Requires permission: kedo**
-
     Erase gospel from the tome of kedo. If multiple entries had been stored under
     the same topic, they are all removed.
     """
@@ -95,6 +76,11 @@ def kedo_forget(client, target, origin, topic):
 @service.command(r"what does kedo know about\??$", mention=True)
 @service.command(r"!kedo$")
 def kedolist(client, target, origin):
+    """
+    kedolist
+
+    List all scripture in the book of kedo.
+    """
     client.message(target, "\x02kedo knows about:\x02 {things}".format(
         things=", ".join([x.topic for x in KedoBit.select().group_by(KedoBit.topic)])
     ))
