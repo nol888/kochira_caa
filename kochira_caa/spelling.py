@@ -102,3 +102,17 @@ def add_correction(client, target, origin, word, replace):
         replace=replace
     ))
 
+@service.command(r"what can you spell\?$", mention=True)
+def list_corrections(client, target, origin):
+    """
+    List Corrections
+
+    ::
+
+        $bot: what can you spell?
+
+    Lists all corrections.
+    """
+    client.message(target, "I know the correct spelling of: {things}".format(
+        things=", ".join(x.word for x in Correction.select())
+    ))
