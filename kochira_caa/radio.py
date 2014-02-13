@@ -7,13 +7,13 @@ import requests
 
 from kochira import config
 from kochira.auth import requires_permission
-from kochira.service import Service, background
+from kochira.service import Service, background, Config
 from lxml import etree
 
 service = Service(__name__, __doc__)
 
 @service.config
-class Config(config.Config):
+class Config(Config):
     username = config.Field(doc="Username for HTTP basic auth.")
     password = config.Field(doc="Password for HTTP basic auth.")
     url = config.Field(doc="URL of the Icecast2 admin page.")
