@@ -28,27 +28,26 @@ def initialize_model(bot):
 
 @service.command(r"kedo on (?P<topic>[^:]+)$", mention=True)
 @service.command(r"!kedo (?P<topic>.+)$")
-def kedo(client, target, origin, topic):
+def kedo(ctx, topic):
     """
     kedo
 
     Query the tome of kedo and return the results.
     """
     if not KedoBit.select().where(KedoBit.topic == topic).exists():
-        client.message(target, "{origin}: kedo hasn't said anything about {topic} yet. poop.".format(
-            origin=origin,
+        ctx.respond("kedo hasn't said anything about {topic} yet. poop.".format(
             topic=topic
         ))
         return
 
-    client.message(target, "\x02kedo on {topic}:\x02 {bit.knowledge}".format(
+    ctx.message("\x02kedo on {topic}:\x02 {bit.knowledge}".format(
         topic=topic,
         bit=KedoBit.select().where(KedoBit.topic == topic).order_by(fn.Random()).limit(1)[0]))
 
 @service.command(r"kedo on (?P<topic>.+): (?P<knowledge>.+)$", mention=True)
 @service.command(r"!kedolearn (?P<topic>.+) : (?P<knowledge>.+)$")
 @requires_permission("kedo")
-def kedo_learn(client, target, origin, topic, knowledge):
+def kedo_learn(ctx, topic, knowledge):
     """
     kedolearn
 
@@ -57,12 +56,12 @@ def kedo_learn(client, target, origin, topic, knowledge):
     """
     KedoBit.create(topic=topic, knowledge=knowledge).save()
 
-    client.message(target, "kedo now knows about \x02{topic}\x02!".format(topic=topic))
+    ctx.respond("kedo now knows about \x02{topic}\x02!".format(topic=topic))
 
 @service.command(r"kedo no longer speaks of (?P<topic>.+)$", mention=True)
 @service.command(r"!kedoforget (?P<topic>.+)$")
 @requires_permission("kedo")
-def kedo_forget(client, target, origin, topic):
+def kedo_forget(ctx, topic):
     """
     kedoforget
 
@@ -71,17 +70,17 @@ def kedo_forget(client, target, origin, topic):
     """
     KedoBit.delete().where(KedoBit.topic == topic).execute()
 
-    client.message(target, "kedo no longer knows about \x02{topic}\x02.".format(topic=topic))
+    ctx.respond("kedo no longer knows about \x02{topic}\x02.".format(topic=topic))
 
 @service.command(r"what does kedo know about\??$", mention=True)
 @service.command(r"!kedo$")
-def kedolist(client, target, origin):
+def kedolist(ctx):
     """
     kedolist
 
     List all scripture in the book of kedo.
     """
-    client.message(target, "\x02kedo knows about:\x02 {things}".format(
+    ctx.message("\x02kedo knows about:\x02 {things}".format(
         things=", ".join([x.topic for x in KedoBit.select().group_by(KedoBit.topic)])
     ))
 

@@ -19,8 +19,8 @@ class Config(Config):
     url = config.Field(doc="URL of the Icecast2 admin page.")
     mount = config.Field(doc="Name of the Icecast2 mountpoint.")
 
-def _np(bot):
-    config = service.config_for(bot)
+def _np(ctx):
+    config = ctx.config
     mount = config.mount
     r = etree.fromstring(requests.get(config.url, auth=(config.username, config.password)).content)
 
@@ -35,16 +35,16 @@ def _np(bot):
 @service.command("^\.np$")
 @requires_permission("caa_radio")
 @background
-def now_playing(client, target, origin):
+def now_playing(ctx):
     """
     Now playing.
 
     Gets the metadata of the currently playing song.
     """
-    np = _np(client.bot)
+    np = _np(ctx)
     if not np:
-        client.message(target, "\x02Now playing:\x02 Nothing!")
+        ctx.message("\x02Now playing:\x02 Nothing!")
     elif np == ("", ""):
-        client.message(target, "\x02Now playing:\x02 No metadata available!")
+        ctx.message("\x02Now playing:\x02 No metadata available!")
     else:
-        client.message(target, "\x02Now playing:\x02 {}".format(" - ".join(np)))
+        ctx.message("\x02Now playing:\x02 {}".format(" - ".join(np)))

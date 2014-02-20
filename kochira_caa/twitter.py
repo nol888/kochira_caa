@@ -70,9 +70,7 @@ def reply(ctx, id, message=None):
 
     if id == "last":
         if ctx.storage.last is None:
-            ctx.client.message(ctx.target, "{origin}: I haven't seen any tweets yet!".format(
-                origin=ctx.origin
-            ))
+            ctx.respond("I haven't seen any tweets yet!")
             return
 
         id = ctx.storage.last["id_str"]
@@ -80,18 +78,13 @@ def reply(ctx, id, message=None):
     try:
         tweet = api.statuses.show(id=id)
     except TwitterHTTPError:
-        ctx.respond("{origin}: Tweet {id} does not exist!".format(
-            origin=ctx.origin,
-            id=id
-        ))
+        ctx.respond("Tweet {} does not exist!".format(id))
         return
 
     if message is None:
         brain = _find_brain(ctx.bot)
         if brain is None:
-            ctx.respond("{origin}: No tweet provided and no Brain could be found!".format(
-                origin=ctx.origin
-            ))
+            ctx.respond("No tweet provided and no Brain could be found!")
             return
 
         text = tweet["text"]

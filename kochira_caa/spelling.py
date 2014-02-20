@@ -28,29 +28,27 @@ def initialize_model(bot):
 
 @service.command(r"forget how to spell (?P<word>.+)$", mention=True)
 @requires_permission("american")
-def remove_correction(client, target, origin, word):
+def remove_correction(ctx, word):
     """
     Add Correction
 
     Enables automatic spelling correction whenever someone says ``word``.
     """
     if not Correction.select().where(Correction.word == word).exists():
-        client.message(target, "{origin}: I'm not correcting \"{word}\".".format(
-            origin=origin,
+        ctx.respond("I'm not correcting \"{word}\".".format(
             word=word
         ))
         return
 
     Correction.delete().where(Correction.word == word).execute()
 
-    client.message(target, "{origin}: Okay, I won't correct the spelling of {word} anymore.".format(
-        origin=origin,
+    ctx.respond("Okay, I won't correct the spelling of {word} anymore.".format(
         word=word
     ))
 
 
 @service.hook("channel_message")
-def do_correction(client, target, origin, message):
+def do_correction(ctx, target, origin, message):
     message_lower = message.lower()
 
     for c in Correction.select():
@@ -60,43 +58,41 @@ def do_correction(client, target, origin, message):
     if message_lower == message.lower():
         return
 
-    client.message(target, "{origin} meant: {message}".format(
-        origin=origin,
+    ctx.message("{origin} meant: {message}".format(
+        origin=ctx.origin,
         message=message
     ))
 
 
 @service.command(r"(?P<word>.+?) should be spelled (?P<replace>.+)$", mention=True)
 @requires_permission("american")
-def add_correction(client, target, origin, word, replace):
+def add_correction(ctx, word, replace):
     """
     Remove Correction
 
     Remove the correct spelling for ``word``.
     """
     if Correction.select().where(Correction.word == word).exists():
-        client.message(target, "{origin}: I'm already correcting the spelling of {word}.".format(
-            origin=origin,
+        ctx.respond("I'm already correcting the spelling of {word}.".format(
             word=word
         ))
         return
 
     Correction.create(word=word, replace=replace).save()
 
-    client.message(target, "{origin}: Okay, {word} should be {replace}.".format(
-        origin=origin,
+    ctx.respond("Okay, {word} should be {replace}.".format(
         word=word,
         replace=replace
     ))
 
 
 @service.command(r"what can you spell\?$", mention=True)
-def list_corrections(client, target, origin):
+def list_corrections(ctx):
     """
     List Corrections
 
     Lists all corrections.
     """
-    client.message(target, "I know the correct spelling of: {things}".format(
+    ctx.respond("I know the correct spelling of: {things}".format(
         things=", ".join(x.word for x in Correction.select())
     ))

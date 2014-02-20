@@ -9,17 +9,17 @@ import re
 service = Service(__name__, __doc__)
 
 @service.command("!imouto(?: (?P<text>.+))?")
-def imouto(client, target, origin, text=None):
+def imouto(ctx, text=None):
     """
     Imouto.
 
     Imouto-ify some text.
     """
     if text is None:
-        if len(client.backlogs[target]) == 1:
+        if len(ctx.client.backlogs[ctx.target]) == 1:
             return
 
-        _, text = client.backlogs[target][1]
+        _, text = ctx.client.backlogs[ctx.target][1]
 
     text = re.sub("\w\w\w\w+", "imouto", text)
-    client.message(target, text)
+    ctx.message(text)

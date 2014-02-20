@@ -49,9 +49,9 @@ def reply_and_learn(ctx, target, origin, message):
         reply_message = ctx.storage.brain.reply(message)
 
         if mention:
-            ctx.respond("{origin}: {message}".format(origin=ctx.origin, message=reply_message))
-        else:
             ctx.respond(reply_message)
+        else:
+            ctx.message(reply_message)
 
     if message:
         ctx.storage.brain.learn(message)
