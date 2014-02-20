@@ -33,82 +33,77 @@ class Config(Config):
                          type=config.Many(Channel))
 
 @service.setup
-def make_twitter(bot):
-    storage = service.storage_for(bot)
-    config = service.config_for(bot)
-
-    storage.api = Twitter(auth=twitter.OAuth(**config.oauth._fields))
-    storage.active = True
-    storage.last = None
-    storage.stream = Thread(target=_follow_userstream, args=(bot,), daemon=True)
-    storage.stream.start()
+def make_twitter(ctx):
+    ctx.storage.api = Twitter(auth=twitter.OAuth(**ctx.config.oauth._fields))
+    ctx.storage.active = True
+    ctx.storage.last = None
+    ctx.storage.stream = Thread(target=_follow_userstream, args=(ctx,), daemon=True)
+    ctx.storage.stream.start()
 
 @service.shutdown
-def kill_twitter(bot):
-    storage = service.storage_for(bot)
-    storage.active = False
-    storage.stream.join()
+def kill_twitter(ctx):
+    ctx.storage.active = False
+    ctx.storage.stream.join()
 
 @service.command(r"tweet (?P<message>.+)$", mention=True)
 @service.command(r"!tweet (?P<message>.+)$")
 @requires_permission("tweet")
-def tweet(client, target, origin, message):
+def tweet(ctx, message):
     """
     Tweet
 
     Tweet the given text.
     """
-    service.storage_for(client.bot).api.statuses.update(status=message)
+    ctx.storage.api.statuses.update(status=message)
 
 @service.command(r"reply to (?P<id>[0-9]+|last)(?: with (?P<message>.+))?$", mention=True)
 @service.command(r"!reply (?P<id>[0-9]+|last)(?: (?P<message>.+))?$")
 @requires_permission("tweet")
-def reply(client, target, origin, id, message=None):
+def reply(ctx, id, message=None):
     """
     Reply
 
     Reply to the given tweet. Automatically prepends the appropriate @mention. If no tweet is given,
     attemps to search for a usable Brain service and uses it to generate a suitable reply.
     """
-    storage = service.storage_for(client.bot)
-    api = storage.api
+    api = ctx.storage.api
 
     if id == "last":
-        if storage.last is None:
-            client.message(target, "{origin}: I haven't seen any tweets yet!".format(
-                origin=origin
+        if ctx.storage.last is None:
+            ctx.client.message(ctx.target, "{origin}: I haven't seen any tweets yet!".format(
+                origin=ctx.origin
             ))
             return
 
-        id = storage.last["id_str"]
+        id = ctx.storage.last["id_str"]
 
     try:
         tweet = api.statuses.show(id=id)
     except TwitterHTTPError:
-        client.message(target, "{origin}: Tweet {id} does not exist!".format(
-            origin=origin,
+        ctx.respond("{origin}: Tweet {id} does not exist!".format(
+            origin=ctx.origin,
             id=id
         ))
         return
 
     if message is None:
-        brain = _find_brain(client.bot)
+        brain = _find_brain(ctx.bot)
         if brain is None:
-            client.message(target, "{origin}: No tweet provided and no Brain could be found!".format(
-                origin=origin
+            ctx.respond("{origin}: No tweet provided and no Brain could be found!".format(
+                origin=ctx.origin
             ))
             return
 
         text = tweet["text"]
         user = "@{} ".format(tweet["user"]["screen_name"])
-        message = user + brain.reply(client.bot, text, max_len=140-len(user))
+        message = user + brain.reply(ctx.bot, text, max_len=140-len(user))
     else:
         message = "@{} {}".format(tweet["user"]["screen_name"], message)
 
     api.statuses.update(status=message, in_reply_to_status_id=id)
 
-def _follow_userstream(bot):
-    o = service.config_for(bot).oauth._fields
+def _follow_userstream(ctx):
+    o = ctx.config.oauth._fields
     stream = TwitterStream(auth=twitter.OAuth(**o), domain="userstream.twitter.com", block=False)
 
     for msg in stream.user():
@@ -117,9 +112,9 @@ def _follow_userstream(bot):
 
             # Twitter signals start of stream with the "friends" message.
             if 'friends' in msg:
-                _announce(bot, "\x02twitter:\x02 This channel is now streaming Twitter in real-time.")
+                _announce(ctx, "\x02twitter:\x02 This channel is now streaming Twitter in real-time.")
             elif 'text' in msg and 'user' in msg:
-                service.storage_for(bot).last = msg
+                ctx.storage.last = msg
 
                 url_format = "(https://twitter.com/{0[user][screen_name]}/status/{0[id_str]})"
                 if 'retweeted_status' in msg:
@@ -127,17 +122,17 @@ def _follow_userstream(bot):
                 else:
                     text = "\x02[@{0[user][screen_name]}]\x02 {0[text]} " + url_format
 
-                _announce(bot, text.format(msg))
+                _announce(ctx, text.format(msg))
         else:
             time.sleep(.5)
 
-        if not service.storage_for(bot).active:
+        if not ctx.storage.active:
             return
 
-def _announce(bot, text):
-    for announce in service.config_for(bot).announce:
-        if announce.client in bot.clients:
-            bot.clients[announce.client].message(announce.channel, text)
+def _announce(ctx, text):
+    for announce in ctx.config.announce:
+        if announce.client in ctx.bot.clients:
+            ctx.bot.clients[announce.client].message(announce.channel, text)
 
 def _find_brain(bot):
     import importlib
