@@ -45,6 +45,18 @@ def kill_twitter(ctx):
     ctx.storage.active = False
     ctx.storage.stream.join()
 
+@service.command(r"!twitter$")
+@requires_permission("tweet")
+def restart_twitter(ctx):
+    """
+    Restart the twitter stream because Twitter sucks.
+    """
+    ctx.storage.active = False
+    ctx.storage.stream.join()
+    ctx.storage.active = True
+    ctx.storage.stream = Thread(target=_follow_userstream, args=(ctx,), daemon=True)
+    ctx.storage.stream.start()
+
 @service.command(r"tweet (?P<message>.+)$", mention=True)
 @service.command(r"!tweet (?P<message>.+)$")
 @requires_permission("tweet")
