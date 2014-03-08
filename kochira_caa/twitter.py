@@ -94,14 +94,15 @@ def reply(ctx, id, message=None):
         return
 
     if message is None:
-        brain = _find_brain(ctx.bot)
-        if brain is None:
+        try:
+            brain = ctx.provider_for("brain")
+        except KeyError:
             ctx.respond("No tweet provided and no Brain could be found!")
             return
 
         text = tweet["text"]
         user = "@{} ".format(tweet["user"]["screen_name"])
-        message = user + brain.reply(ctx.bot, text, max_len=140-len(user))
+        message = user + brain(text, max_len=140-len(user))
     else:
         message = "@{} {}".format(tweet["user"]["screen_name"], message)
 
@@ -111,44 +112,42 @@ def _follow_userstream(ctx):
     o = ctx.config.oauth._fields
     stream = TwitterStream(auth=twitter.OAuth(**o), domain="userstream.twitter.com", block=False)
 
-    for msg in stream.user():
-        if msg is not None:
-            service.logger.debug(str(msg))
+    while ctx.storage.active:
+        try:
+            for msg in stream.user():
+                if msg is not None:
+                    service.logger.debug(str(msg))
 
-            # Twitter signals start of stream with the "friends" message.
-            if 'friends' in msg:
-                _announce(ctx, "\x02twitter:\x02 This channel is now streaming Twitter in real-time.")
-            elif 'text' in msg and 'user' in msg:
-                ctx.storage.last = msg
+                    # Twitter signals start of stream with the "friends" message.
+                    if 'friends' in msg:
+                        _announce(ctx, "\x02twitter:\x02 This channel is now streaming Twitter in real-time.")
+                    elif 'text' in msg and 'user' in msg:
+                        ctx.storage.last = msg
 
-                url_format = "(https://twitter.com/{0[user][screen_name]}/status/{0[id_str]})"
-                if 'retweeted_status' in msg:
-                    text = "\x02[@{0[user][screen_name]} RT @{0[retweeted_status][user][screen_name]}]\x02 {0[retweeted_status][text]} " + url_format
+                        url_format = "(https://twitter.com/{0[user][screen_name]}/status/{0[id_str]})"
+                        if 'retweeted_status' in msg:
+                            text = "\x02[@{0[user][screen_name]} RT @{0[retweeted_status][user][screen_name]}]\x02 {0[retweeted_status][text]} " + url_format
+                        else:
+                            text = "\x02[@{0[user][screen_name]}]\x02 {0[text]} " + url_format
+
+                        _announce(ctx, text.format(msg))
                 else:
-                    text = "\x02[@{0[user][screen_name]}]\x02 {0[text]} " + url_format
+                    time.sleep(.5)
 
-                _announce(ctx, text.format(msg))
-        else:
-            time.sleep(.5)
+                if not ctx.storage.active:
+                    return
 
-        if not ctx.storage.active:
-            return
+            _announce(ctx, "\x02twitter:\x02 Twitter userstream connection lost! Attempting to reconnect.")
+        except Exception as e:
+            _announce(ctx, "\x02twitter:\x02 Exception thrown while following userstream!")
+            _announce(ctx, "↳ {name}: {info}".format(
+                            name=e.__class__.__name__,
+                            info=str(e)
+                        ))
+
 
 def _announce(ctx, text):
     for announce in ctx.config.announce:
         if announce.client in ctx.bot.clients:
             ctx.bot.clients[announce.client].message(announce.channel, text)
 
-def _find_brain(bot):
-    import importlib
-
-    if "kochira.services.textproc.brain" in bot.services:
-        return importlib.import_module("kochira.services.textproc.brain")
-
-    for name, _ in bot.services.items():
-        if 'brain' in name.lower():
-            service = importlib.import_module(name)
-            if callable(getattr(service, 'reply', None)):
-                return service
-
-    return None
