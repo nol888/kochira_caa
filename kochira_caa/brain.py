@@ -29,7 +29,7 @@ def load_default_brain(ctx):
 
 @service.shutdown
 def unload_brain(ctx):
-    for brain in ctx.storage.brains:
+    for brain in ctx.storage.brains.values():
         brain.graph.close()
 
 def get_brain(ctx):
@@ -69,5 +69,10 @@ def reply_and_learn(ctx, target, origin, message):
 
 @service.provides("brain")
 def reply(ctx, message, *args, **kwargs):
+    """
+    Reply to a message with the default brain.
+
+    Passes any additional arguments to the brain's .reply function.
+    """
     return service.binding_for(ctx.bot).storage.brain.reply(message, *args, **kwargs)
 
