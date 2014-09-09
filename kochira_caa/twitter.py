@@ -36,6 +36,7 @@ class Config(Config):
 def make_twitter(ctx):
     ctx.storage.api = Twitter(auth=twitter.OAuth(**ctx.config.oauth._fields))
     ctx.storage.active = True
+    ctx.storage.ids = {}
     ctx.storage.last = None
     ctx.storage.stream = Thread(target=_follow_userstream, args=(ctx,), daemon=True)
     ctx.storage.stream.start()
@@ -45,6 +46,7 @@ def kill_twitter(ctx):
     ctx.storage.active = False
     ctx.storage.stream.join()
 
+@service.command(r"!asadayo$")
 @service.command(r"!twitter$")
 @requires_permission("tweet")
 def restart_twitter(ctx):
@@ -68,6 +70,21 @@ def tweet(ctx, message):
     """
     ctx.storage.api.statuses.update(status=message)
 
+@service.command(r"retweet (?P<id>[0-9]+|last)$", mention=True)
+@service.command(r"!(?:rt|retweet) (?P<id>[0-9]+|last)$")
+@requires_permission("tweet")
+def retweet(ctx, id):
+    """
+    Retweet
+
+    Retweets the specified tweet.
+    """
+    id = parse_tweet_id(ctx, id)
+    if id is None:
+        return
+
+    ctx.storage.api.statuses.retweet(id=id)
+
 @service.command(r"reply to (?P<id>[0-9]+|last)(?: with (?P<message>.+))?$", mention=True)
 @service.command(r"!reply (?P<id>[0-9]+|last)(?: (?P<message>.+))?$")
 @requires_permission("tweet")
@@ -75,17 +92,14 @@ def reply(ctx, id, message=None):
     """
     Reply
 
-    Reply to the given tweet. Automatically prepends the appropriate @mention. If no tweet is given,
+    Reply to the given tweet. Automatically prepends the appropriate @mention. If no message is given,
     attemps to search for a usable Brain service and uses it to generate a suitable reply.
     """
     api = ctx.storage.api
 
-    if id == "last":
-        if ctx.storage.last is None:
-            ctx.respond("I haven't seen any tweets yet!")
-            return
-
-        id = ctx.storage.last["id_str"]
+    id = parse_tweet_id(ctx, id)
+    if id is None:
+        return
 
     try:
         tweet = api.statuses.show(id=id)
@@ -108,6 +122,44 @@ def reply(ctx, id, message=None):
 
     api.statuses.update(status=message, in_reply_to_status_id=id)
 
+def memorize_id(ctx, id):
+    ids = ctx.storage.ids
+    suffix = id[-2:]
+    if not suffix in ids:
+        ids[suffix] = set()
+    ids[suffix].add(id)
+
+def parse_tweet_id(ctx, id):
+    """
+    Attempt to resolve a tweet ID.
+    """
+    last = ctx.storage.last
+    ids = ctx.storage.ids
+
+    if id == "last":
+        if last is not None:
+            return last["id_str"]
+
+        ctx.respond("I haven't seen any tweets yet!")
+        return None
+
+    if len(id) < 2:
+        ctx.respond("Enter at least 2 digits!")
+        return None
+
+    suffix = id[-2:]
+    if suffix in ids:
+        matching = [x for x in ids[suffix] if x.endswith(id)]
+        # Return error if ambiguous, found ID if unambiguous, and the original
+        # string if not found. Just in case.
+        if len(matching) > 1:
+            ctx.respond("ID could not unambiguously be resolved! Try a longer prefix.")
+            return None
+        elif len(matching) == 1:
+            return matching[0]
+
+    return id
+
 def _follow_userstream(ctx):
     o = ctx.config.oauth._fields
     stream = TwitterStream(auth=twitter.OAuth(**o), domain="userstream.twitter.com", block=False)
@@ -122,6 +174,7 @@ def _follow_userstream(ctx):
                     if 'friends' in msg:
                         _announce(ctx, "\x02twitter:\x02 This channel is now streaming Twitter in real-time.")
                     elif 'text' in msg and 'user' in msg:
+                        memorize_id(ctx, msg["id_str"])
                         ctx.storage.last = msg
 
                         url_format = "(https://twitter.com/{0[user][screen_name]}/status/{0[id_str]})"
