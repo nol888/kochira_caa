@@ -68,7 +68,11 @@ def tweet(ctx, message):
 
     Tweet the given text.
     """
-    ctx.storage.api.statuses.update(status=message)
+    try:
+        ctx.storage.api.statuses.update(status=message)
+    except TwitterHTTPError as e:
+        for error in e.response_data['errors']:
+            ctx.respond("Twitter returned error: {}".format(error['message']))
 
 @service.command(r"retweet (?P<id>[0-9]+|last)$", mention=True)
 @service.command(r"!(?:rt|retweet) (?P<id>[0-9]+|last)$")
@@ -83,7 +87,11 @@ def retweet(ctx, id):
     if id is None:
         return
 
-    ctx.storage.api.statuses.retweet(id=id)
+    try:
+        ctx.storage.api.statuses.retweet(id=id)
+    except TwitterHTTPError as e:
+        for error in e.response_data['errors']:
+            ctx.respond("Twitter returned error: {}".format(error['message']))
 
 @service.command(r"reply to (?P<id>[0-9]+|last)(?: with (?P<message>.+))?$", mention=True)
 @service.command(r"!reply (?P<id>[0-9]+|last)(?: (?P<message>.+))?$")
@@ -120,7 +128,43 @@ def reply(ctx, id, message=None):
     else:
         message = "@{} {}".format(tweet["user"]["screen_name"], message)
 
-    api.statuses.update(status=message, in_reply_to_status_id=id)
+    try:
+        api.statuses.update(status=message, in_reply_to_status_id=id)
+    except TwitterHTTPError as e:
+        for error in e.response_data['errors']:
+            ctx.respond("Twitter returned error: {}".format(error['message']))
+
+@service.command(r"follow @?(?P<user>[0-9a-z_]+)", mention=True)
+@requires_permission("tweet")
+def follow(ctx, user):
+    """
+    Follow
+
+    Follows a user.
+    """
+    api = ctx.storage.api
+    try:
+        api.friendships.create(screen_name=user, follow=True)
+        ctx.respond("Now following @{}.".format(user))
+    except TwitterHTTPError as e:
+        for error in e.response_data['errors']:
+            ctx.respond("Twitter returned error: {}".format(error['message']))
+
+@service.command(r"(unfollow|stop following) @?(?P<user>[0-9a-z_]+)", mention=True)
+@requires_permission("tweet")
+def unfollow(ctx, user):
+    """
+    Unfollow
+
+    Unfollows a user.
+    """
+    api = ctx.storage.api
+    try:
+        api.friendships.destroy(screen_name=user)
+        ctx.respond("No longer following @{}.".format(user))
+    except TwitterHTTPError as e:
+        for error in e.response_data['errors']:
+            ctx.respond("Twitter returned error: {}".format(error['message']))
 
 def memorize_id(ctx, id):
     ids = ctx.storage.ids
@@ -198,8 +242,9 @@ def _follow_userstream(ctx):
                             info=str(e)
                         ))
 
-
 def _announce(ctx, text):
+    text = text.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+
     for announce in ctx.config.announce:
         if announce.client in ctx.bot.clients:
             ctx.bot.clients[announce.client].message(announce.channel, text)

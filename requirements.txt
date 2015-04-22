@@ -1,2 +1,2 @@
 kochira
-twitter
+twitter>=1.17
