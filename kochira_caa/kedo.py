@@ -4,6 +4,8 @@ kedo module.
 Allows mortals to learn from the tome of kedo.
 """
 
+from random import randint
+
 from peewee import CharField, fn
 
 from kochira.db import Model
@@ -82,5 +84,16 @@ def kedolist(ctx):
     """
     ctx.message("\x02kedo knows about:\x02 {things}".format(
         things=", ".join([x.topic for x in KedoBit.select().group_by(KedoBit.topic)])
+    ))
+
+@service.command(r".*\[in\].*")
+def lnkd_simulator_2015(ctx):
+    """
+    LNKD simulator 2015
+
+    Accurate simulation of LNKD.
+    """
+    ctx.respond("\x02LNKD\x02 down {percent}%!".format(
+        percent=randint(15, 25)
     ))
 
