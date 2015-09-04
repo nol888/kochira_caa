@@ -58,15 +58,21 @@ def search(ctx, instance, text):
     instance = ctx.config.instances[instance]
 
     r = _search(instance, ctx.client.name.lower(), ctx.target.lower(), text)
+    if r is None or r['total_results'] < 2:
+        ctx.respond("No results found for \"{text}\"!".format(text=text))
+        return
+
     result = r['results'][1]
     match_idx = list(compress(count(), [1 if line['line_marker'] == ':' else 0 for line in result['lines']]))[0]
     lines = result['lines'][max(0, match_idx-2):min(match_idx+3, len(result['lines']))]
 
     for line in lines:
         ctx.message(line['line'])
+
     ctx.message("\x02Log from:\x02 {date}. \x02Total results:\x02 {total}. {base}{path}".format(
         date=result['date'],
         total=r['total_results'],
         base=instance.base_url.rstrip('/'),
         path=r['canonical_url']
     ))
+
