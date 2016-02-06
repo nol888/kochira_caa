@@ -208,6 +208,9 @@ def _follow_userstream(ctx):
     o = ctx.config.oauth._fields
     stream = TwitterStream(auth=twitter.OAuth(**o), domain="userstream.twitter.com", block=False)
 
+    reconnect_seconds = [2, 10, 60, 300]
+    reconnect_tries = 0
+
     while ctx.storage.active:
         try:
             for msg in stream.user():
@@ -217,6 +220,7 @@ def _follow_userstream(ctx):
                     # Twitter signals start of stream with the "friends" message.
                     if 'friends' in msg:
                         _announce(ctx, "\x02twitter:\x02 This channel is now streaming Twitter in real-time.")
+                        reconnect_tries = 0
                     elif 'text' in msg and 'user' in msg:
                         memorize_id(ctx, msg["id_str"])
                         ctx.storage.last = msg
@@ -234,13 +238,20 @@ def _follow_userstream(ctx):
                 if not ctx.storage.active:
                     return
 
-            _announce(ctx, "\x02twitter:\x02 Twitter userstream connection lost! Attempting to reconnect.")
+            _announce(ctx, "\x02twitter:\x02 Twitter userstream connection lost! Waiting {time} seconds to reconnect.".format(
+                            time=reconnect_seconds[reconnect_tries]
+                        ))
         except Exception as e:
-            _announce(ctx, "\x02twitter:\x02 Exception thrown while following userstream!")
+            _announce(ctx, "\x02twitter:\x02 Exception thrown while following userstream! Waiting {time} seconds to reconnect.".format(
+                            time=reconnect_seconds[reconnect_tries]
+                        ))
             _announce(ctx, "↳ {name}: {info}".format(
                             name=e.__class__.__name__,
                             info=str(e)
                         ))
+
+        time.sleep(reconnect_seconds[reconnect_tries])
+        reconnect_tries += 1
 
 def _announce(ctx, text):
     text = text.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
