@@ -87,13 +87,13 @@ def kedolist(ctx):
     ))
 
 @service.command(r".*\[in\].*")
-def lnkd_simulator_2015(ctx):
+def lnkd_simulator_2016(ctx):
     """
-    LNKD simulator 2015
+    LNKD simulator 2016
 
     Accurate simulation of LNKD.
     """
     ctx.respond("\x02LNKD\x02 down {percent}%!".format(
-        percent=randint(15, 25)
+        percent=randint(15, 45)
     ))
 
