@@ -4,7 +4,7 @@ kedo module.
 Allows mortals to learn from the tome of kedo.
 """
 
-from random import randint
+from random import randint, random
 
 from peewee import CharField, fn
 
@@ -97,3 +97,23 @@ def lnkd_simulator_2016(ctx):
         percent=randint(15, 45)
     ))
 
+@service.command(r"!nichi(?: (?P<text>.+))?")
+def nichi(ctx, text=None):
+    """
+    ,,,n,ic,,,hi
+    """
+    if text is None:
+        if len(ctx.client.backlogs[ctx.target]) == 1:
+            return
+
+        _, text = ctx.client.backlogs[ctx.target][1]
+
+    new_text = ''
+    for c in text:
+        if random() < 0.4:
+            if random() < 0.3:
+                new_text += ',' * randint(3,6)
+            else:
+                new_text += ',' * randint(1,2)
+        new_text += c
+    ctx.message(new_text)
