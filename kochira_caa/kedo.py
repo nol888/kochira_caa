@@ -46,7 +46,7 @@ def kedo(ctx, topic):
         topic=topic,
         bit=KedoBit.select().where(KedoBit.topic == topic).order_by(fn.Random()).limit(1)[0]))
 
-@service.command(r"kedo on (?P<topic>.+): (?P<knowledge>.+)$", mention=True)
+@service.command(r"kedo on (?P<topic>.*\w)\s*: (?P<knowledge>.+)$", mention=True)
 @service.command(r"!kedolearn (?P<topic>.+) : (?P<knowledge>.+)$")
 @requires_permission("kedo")
 def kedo_learn(ctx, topic, knowledge):
