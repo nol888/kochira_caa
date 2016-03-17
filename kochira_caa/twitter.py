@@ -205,7 +205,7 @@ def parse_tweet_id(ctx, id):
     return id
 
 # Truncate to max_length-3, breaking a word if the space-truncated string is
-# less than this proprotion of the maximum.
+# less than this proportion of the maximum.
 TRUNCATE_FORCE_BREAK_WORD_SPACE_THRESHOLD = 0.7
 TRUNCATE_BREAK_POINTS = ' _-/'
 def truncate(message, max_length=140):
