@@ -69,7 +69,7 @@ def tweet(ctx, message):
     Tweet the given text.
     """
     try:
-        ctx.storage.api.statuses.update(status=message)
+        ctx.storage.api.statuses.update(status=truncate(message))
     except TwitterHTTPError as e:
         for error in e.response_data['errors']:
             ctx.respond("Twitter returned error: {}".format(error['message']))
@@ -129,7 +129,7 @@ def reply(ctx, id, message=None):
         message = "@{} {}".format(tweet["user"]["screen_name"], message)
 
     try:
-        api.statuses.update(status=message, in_reply_to_status_id=id)
+        api.statuses.update(status=truncate(message), in_reply_to_status_id=id)
     except TwitterHTTPError as e:
         for error in e.response_data['errors']:
             ctx.respond("Twitter returned error: {}".format(error['message']))
@@ -203,6 +203,22 @@ def parse_tweet_id(ctx, id):
             return matching[0]
 
     return id
+
+# Truncate to max_length-3, breaking a word if the space-truncated string is
+# less than this proprotion of the maximum.
+TRUNCATE_FORCE_BREAK_WORD_SPACE_THRESHOLD = 0.7
+TRUNCATE_BREAK_POINTS = ' _-/'
+def truncate(message, max_length=140):
+    if len(message) > max_length:
+        hard_max = message[:max_length]
+        highest_break = max(hard_max.rfind(ch) for ch in TRUNCATE_BREAK_POINTS)
+        truncated = message[:highest_break] + '...'
+        # We don't really want to ...-truncate if it would look really silly
+        if len(truncated) / float(max_length) < TRUNCATE_FORCE_BREAK_WORD_SPACE_THRESHOLD:
+            message = message[:max_length-3] + '...'
+        else:
+            message = truncated
+    return message
 
 def _follow_userstream(ctx):
     o = ctx.config.oauth._fields
