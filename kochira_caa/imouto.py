@@ -21,5 +21,15 @@ def imouto(ctx, text=None):
 
         _, text = ctx.client.backlogs[ctx.target][1]
 
-    text = re.sub("\w\w\w\w+", "imouto", text)
+    def case_corrected_imouto(match):
+        if all(c.isupper() for c in match.group(0)):
+            return 'IMOUTO'
+
+        if all(c.islower() for c in match.group(0)):
+            return 'imouto'
+
+        if match.group(0).capitalize() == match.group(0):
+            return 'Imouto'
+
+    text = re.sub("\w\w\w\w+", case_corrected_imouto, text)
     ctx.message(text)
