@@ -4,14 +4,15 @@ kedo module.
 Allows mortals to learn from the tome of kedo.
 """
 
-from random import randint, random
+import re
+
+from random import choice, randint, random
 
 from peewee import CharField, fn
 
-from kochira.db import Model
-
-from kochira.service import Service
 from kochira.auth import requires_permission
+from kochira.db import Model
+from kochira.service import Service
 
 service = Service(__name__, __doc__)
 
@@ -117,3 +118,20 @@ def nichi(ctx, text=None):
                 new_text += ',' * randint(1,2)
         new_text += c
     ctx.message(new_text)
+
+RIN_REGEX = re.compile(r"(?:\b([A-Za-z0-9_'-]+) )?\b([A-Za-z0-9_'-]+) in([A-Za-z0-9_-]+)")
+RIN_IGNORE = set(['to', 'ternet'])
+
+@service.hook("channel_message")
+def rin(ctx, target, origin, message):
+    """
+    <kedo> nice rinnovation! xDD
+    """
+    ins = RIN_REGEX.findall(message)
+    if ins and random() < 0.5:
+        far_prev, prev, in_word = choice(ins)
+
+        if in_word not in RIN_IGNORE:
+            prev = (far_prev + ' ' + prev) if far_prev and random() < 0.4 else prev
+            ctx.message("<kedo> {} rin{} xDD".format(prev, in_word))
+
