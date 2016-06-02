@@ -2,6 +2,8 @@
 nattobrain pkls go
 """
 
+from random import random
+
 from kochira.service import Service, background
 from cobe.brain import Brain
 
@@ -18,5 +20,9 @@ def unload_brain(ctx):
 @service.command(r":natto:", mention=False)
 @background
 def generate_natto(ctx):
-    ctx.message('<nattofriends> {}'.format(ctx.storage.brain.reply('')))
-
+    msg = ctx.storage.brain.reply('')
+    if random() < 0.1:
+        ctx.message('<nattofriends> ' + msg[:-1])
+        ctx.message('<nattofriends> ' + msg[-1])
+    else:
+        ctx.message('<nattofriends> ' + msg)
