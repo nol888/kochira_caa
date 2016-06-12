@@ -132,6 +132,6 @@ def rin(ctx, target, origin, message):
         far_prev, prev, in_word = choice(ins)
 
         if in_word not in RIN_IGNORE:
+            prev = 'a' if prev == 'an' else prev
             prev = (far_prev + ' ' + prev) if far_prev and random() < 0.4 else prev
             ctx.message("<kedo> {} rin{} xDD".format(prev, in_word))
-
