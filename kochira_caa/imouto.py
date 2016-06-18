@@ -4,7 +4,10 @@ Say hello to imouto.
 See the world from kedo's point of view.
 """
 from kochira.service import Service
+from Stemmer import Stemmer
 import re
+
+stemmer = Stemmer('english')
 
 service = Service(__name__, __doc__)
 
@@ -21,15 +24,22 @@ def imouto(ctx, text=None):
 
         _, text = ctx.client.backlogs[ctx.target][1]
 
-    def case_corrected_imouto(match):
-        if all(c.isupper() for c in match.group(0)):
+    def case_corrected_imouto(word):
+        if all(c.isupper() for c in word):
             return 'IMOUTO'
 
-        if all(c.islower() for c in match.group(0)):
-            return 'imouto'
-
-        if match.group(0).capitalize() == match.group(0):
+        if word.capitalize() == word:
             return 'Imouto'
 
-    text = re.sub("\w\w\w\w+", case_corrected_imouto, text)
+        return 'imouto'
+
+    def stemmed_imouto(match):
+        word = match.group(0)
+        word_stem = stemmer.stemWord(word)
+        if word.startswith(word_stem):
+            return case_corrected_imouto(word) + word[len(word_stem):]
+        else:
+            return case_corrected_imouto(word)
+
+    text = re.sub("\w\w\w\w+", stemmed_imouto, text)
     ctx.message(text)
