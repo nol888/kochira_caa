@@ -4,10 +4,10 @@ Say hello to imouto.
 See the world from kedo's point of view.
 """
 from kochira.service import Service
-from Stemmer import Stemmer
+from nltk.stem.snowball import SnowballStemmer
 import re
 
-stemmer = Stemmer('english')
+stemmer = SnowballStemmer('english')
 
 service = Service(__name__, __doc__)
 
@@ -35,8 +35,8 @@ def imouto(ctx, text=None):
 
     def stemmed_imouto(match):
         word = match.group(0)
-        word_stem = stemmer.stemWord(word)
-        if word.startswith(word_stem):
+        word_stem = stemmer.stem(word)
+        if word != word_stem and word.startswith(word_stem):
             return case_corrected_imouto(word) + word[len(word_stem):]
         else:
             return case_corrected_imouto(word)
