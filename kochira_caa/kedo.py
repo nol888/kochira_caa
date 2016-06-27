@@ -121,6 +121,7 @@ def nichi(ctx, text=None):
 
 RIN_REGEX = re.compile(r"(?:\b([A-Za-z0-9_'-]+) )?\b([A-Za-z0-9_'-]+) in([A-Za-z0-9_-]+)")
 RIN_IGNORE = set(['to', 'ternet'])
+RIN_CACHE = []
 
 @service.hook("channel_message")
 def rin(ctx, target, origin, message):
@@ -131,7 +132,10 @@ def rin(ctx, target, origin, message):
     if ins and random() < 0.5:
         far_prev, prev, in_word = choice(ins)
 
-        if in_word not in RIN_IGNORE:
+        if in_word not in RIN_IGNORE and in_word not in RIN_CACHE:
             prev = 'a' if prev == 'an' else prev
             prev = (far_prev + ' ' + prev) if far_prev and random() < 0.4 else prev
             ctx.message("<kedo> {} rin{} xDD".format(prev, in_word))
+            
+            RIN_CACHE.insert(0, in_word)
+            RIN_CACHE.pop()
