@@ -63,7 +63,7 @@ yelp = partial(run_generator,
                                 ]),
                                 PickFrom(1, [
                                     "get_",
-                                    "set_"
+                                    "set_",
                                     "check_",
                                     "create_",
                                     "load_",
