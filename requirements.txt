@@ -1,2 +1,4 @@
 kochira
 twitter>=1.17
+markovify
+nltk
