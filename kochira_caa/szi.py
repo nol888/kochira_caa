@@ -15,6 +15,11 @@ last_smugleaf = None
 
 @service.command(r"(?:how long has it been since szi(?: was)?|when was szi last|when did szi last) (?:a faggot|(?:(?:mention(?:ed)?|fug(?:ged)?|say|said) )?smugleaf)$", mention=True)
 def query_last_smugleaf(ctx):
+    """
+    Smugleaf query.
+
+    Ask Kochira the last time SZI last said "smugleaf".
+    """
     if last_smugleaf:
         time_since_smugleaf = datetime.utcnow() - last_smugleaf
         ctx.respond("It has been {duration} since SZI last fugleafed.".format(
