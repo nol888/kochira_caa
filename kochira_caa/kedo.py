@@ -137,7 +137,7 @@ def rin(ctx, target, origin, message):
                 prev = 'a' if prev == 'an' else prev
                 prev = (far_prev + ' ' + prev) if far_prev and random() < 0.4 else prev
                 ctx.message("<kedo> {} rin{} xDD".format(prev, in_word))
-                
+
                 RIN_CACHE.insert(0, in_word)
                 if len(RIN_CACHE) > 3:
                     RIN_CACHE.pop()

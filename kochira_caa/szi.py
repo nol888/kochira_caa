@@ -32,4 +32,5 @@ def query_last_smugleaf(ctx):
 def update_last_smugleaf(ctx, target, origin, message):
     if origin.lower() == 'szi':
         if 'smugleaf' in message:
+            global last_smugleaf
             last_smugleaf = datetime.utcnow()
