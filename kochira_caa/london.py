@@ -20,5 +20,6 @@ def london(ctx, what=None):
         _, what = ctx.client.backlogs[ctx.target][1]
     ctx.message(what.upper())
     for x in what.upper()[1:]:
-        ctx.message(x)
-
+        ctx.message(
+            '|' if x == '-' else x
+        )
