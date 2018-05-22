@@ -10,14 +10,22 @@ from kochira.service import Service, background, Config
 
 service = Service(__name__, __doc__)
 
-def wordnik_get_word(part_of_speech,  min_corpus_count=1000):
-    return requests.get("http://api.wordnik.com/v4/words.json/randomWord", params={
-        'hasDictionaryDef': 'true',
-        'includePartOfSpeech': part_of_speech,
-        'minCorpusCount': min_corpus_count,
-        'minLength': 5,
-        'api_key': 'a2a73e7b926c924fad7001ca3111acd55af2ffabf50eb4ae5',
-    }).json()['word']
+@service.config
+class Config(Config):
+    api_key = config.Field(doc="Wordnik API key")
+
+@service.setup
+def make_api(ctx):
+    def wordnik_get_word(part_of_speech, min_corpus_count=1000):
+        return requests.get("http://api.wordnik.com/v4/words.json/randomWord", params={
+            'hasDictionaryDef': 'true',
+            'includePartOfSpeech': part_of_speech,
+            'minCorpusCount': min_corpus_count,
+            'minLength': 5,
+            'api_key': ctx.config.api_key,
+        }).json()['word']
+
+    ctx.storage.get_word = wordnik_get_word
 
 @service.command(r"^:amatsukaze:$")
 @background
@@ -27,8 +35,8 @@ def amatsukaze(ctx):
 
     That's surely very advanced for computers.
     """
-    adjective = wordnik_get_word('adjective')
-    noun = wordnik_get_word('noun')
+    adjective = ctx.storage.get_word('adjective')
+    noun = ctx.storage.get_word('noun')
 
     ctx.message("That's surely very {adjective} for {noun}.".format(
         adjective=adjective,
@@ -43,10 +51,25 @@ def szi(ctx):
 
     <szi> Choose this, whips out axiom of choice
     """
-    verb = wordnik_get_word('verb-transitive')
-    noun = wordnik_get_word('noun')
+    verb = ctx.storage.get_word('verb-transitive')
+    noun = ctx.storage.get_word('noun')
 
     ctx.message("<szi> {verb} this, whips out {noun}".format(
         verb=verb,
         noun=noun,
     ))
+
+@service.command(r"^(\w+ )((on|onto|in|at|out|for|to|by|off|about) )?this$")
+@background
+def szi_partial(ctx):
+    """
+    autism on this
+
+    <szi> bring this <szi> whips out your deliverance from a startup that won't make money
+    """
+    noun = ctx.storage.get_word('noun')
+
+    ctx.message("whips out {noun}".format(
+        noun=noun
+    ))
+
