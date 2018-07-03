@@ -4,6 +4,8 @@ Artificial (un)intelligence.
 Allows the bot to reply whenever its nickname is mentioned.
 """
 
+import itertools
+import operator
 import re
 
 from kochira import config
@@ -41,6 +43,24 @@ class BalancedScorer(Scorer):
         quotes = sum([1 for x in text if x == '"'])
         return 0.5 if quotes % 2 else 1.0
 
+class RepeatedMentionScorer(Scorer):
+    def score(self, reply):
+        words = reply.to_text().split()
+        at_mentions = [1 if word.startswith('@') else 0 for word in words]
+        run_lengths = [
+            len(list(y))
+            for (x, y)
+            in itertools.groupby(
+                (enumerate(at_mentions)),
+                operator.itemgetter(1)
+            )
+            if x
+        ]
+        if not run_lengths:
+            return 1.0
+
+        return 1.0 / max(1.0, max(run_lengths) - 1)
+
 def load_brain(ctx):
     ctx.storage.brains[ctx.config.brain_file] = Brain(ctx.config.brain_file, check_same_thread=False)
 
@@ -48,6 +68,7 @@ def load_brain(ctx):
     scorer.score = scorergroup_score.__get__(scorer, ScorerGroup)
     scorer.add_scorer(1.0, LengthScorer())
     scorer.add_scorer(1.0, BalancedScorer())
+    scorer.add_scorer(1.0, RepeatedMentionScorer())
 
 @service.setup
 def load_default_brain(ctx):
