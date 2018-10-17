@@ -16,6 +16,8 @@ from kochira.auth import requires_permission
 
 service = Service(__name__, __doc__)
 
+TWEET_ID_REGEX = r"(?:https?://(?:m\.|www\.)?twitter.com/[^/]+/status/)?(?P<id>[0-9]+)"
+
 @service.config
 class Config(Config):
     class OAuth(config.Config):
@@ -23,41 +25,13 @@ class Config(Config):
         consumer_secret = config.Field(doc="Twitter API consumer secret.")
         token = config.Field(doc="Twitter API OAuth token.")
         token_secret = config.Field(doc="Twitter API OAuth token secret.")
-    class Channel(config.Config):
-        client = config.Field(doc="The client to announce on.")
-        channel = config.Field(doc="The channel to announce on.")
 
     oauth = config.Field(doc="OAuth parameters.",
                          type=OAuth)
-    announce = config.Field(doc="Places to announce tweets.",
-                         type=config.Many(Channel))
 
 @service.setup
 def make_twitter(ctx):
     ctx.storage.api = Twitter(auth=twitter.OAuth(**ctx.config.oauth._fields))
-    ctx.storage.active = True
-    ctx.storage.ids = {}
-    ctx.storage.last = None
-    ctx.storage.stream = Thread(target=_follow_userstream, args=(ctx,), daemon=True)
-    ctx.storage.stream.start()
-
-@service.shutdown
-def kill_twitter(ctx):
-    ctx.storage.active = False
-    ctx.storage.stream.join()
-
-@service.command(r"!asadayo$")
-@service.command(r"!twitter$")
-@requires_permission("tweet")
-def restart_twitter(ctx):
-    """
-    Restart the twitter stream because Twitter sucks.
-    """
-    ctx.storage.active = False
-    ctx.storage.stream.join()
-    ctx.storage.active = True
-    ctx.storage.stream = Thread(target=_follow_userstream, args=(ctx,), daemon=True)
-    ctx.storage.stream.start()
 
 @service.command(r"tweet (?P<message>.+)$", mention=True)
 @service.command(r"!tweet (?P<message>.+)$")
@@ -69,13 +43,14 @@ def tweet(ctx, message):
     Tweet the given text.
     """
     try:
-        ctx.storage.api.statuses.update(status=truncate(message))
+        tweet = ctx.storage.api.statuses.update(status=truncate(message))
+        ctx.message("https://twitter.com/{0[user][screen_name]}/status/{0[id_str]}".format(tweet))
     except TwitterHTTPError as e:
         for error in e.response_data['errors']:
             ctx.respond("Twitter returned error: {}".format(error['message']))
 
-@service.command(r"retweet (?P<id>[0-9]+|last)$", mention=True)
-@service.command(r"!(?:rt|retweet) (?P<id>[0-9]+|last)$")
+@service.command(r"retweet " + TWEET_ID_REGEX + "$", mention=True)
+@service.command(r"!(?:rt|retweet) " + TWEET_ID_REGEX + "$")
 @requires_permission("tweet")
 def retweet(ctx, id):
     """
@@ -83,18 +58,14 @@ def retweet(ctx, id):
 
     Retweets the specified tweet.
     """
-    id = parse_tweet_id(ctx, id)
-    if id is None:
-        return
-
     try:
         ctx.storage.api.statuses.retweet(id=id)
     except TwitterHTTPError as e:
         for error in e.response_data['errors']:
             ctx.respond("Twitter returned error: {}".format(error['message']))
 
-@service.command(r"reply to (?P<id>[0-9]+|last)(?: with (?P<message>.+))?$", mention=True)
-@service.command(r"!reply (?P<id>[0-9]+|last)(?: (?P<message>.+))?$")
+@service.command(r"reply to " + TWEET_ID_REGEX + r"(?: with (?P<message>.+))?$", mention=True)
+@service.command(r"!reply " + TWEET_ID_REGEX + r"(?: (?P<message>.+))?$")
 @requires_permission("tweet")
 def reply(ctx, id, message=None):
     """
@@ -104,10 +75,6 @@ def reply(ctx, id, message=None):
     attemps to search for a usable Brain service and uses it to generate a suitable reply.
     """
     api = ctx.storage.api
-
-    id = parse_tweet_id(ctx, id)
-    if id is None:
-        return
 
     try:
         tweet = api.statuses.show(id=id)
@@ -123,13 +90,11 @@ def reply(ctx, id, message=None):
             return
 
         text = tweet["text"]
-        user = "@{} ".format(tweet["user"]["screen_name"])
-        message = user + brain(text, max_len=140-len(user))
-    else:
-        message = "@{} {}".format(tweet["user"]["screen_name"], message)
+        message = brain(text, max_len=280)
 
     try:
-        api.statuses.update(status=truncate(message), in_reply_to_status_id=id)
+        tweet = api.statuses.update(status=truncate(message), in_reply_to_status_id=id, auto_populate_reply_metadata=True)
+        ctx.message("https://twitter.com/{0[user][screen_name]}/status/{0[id_str]}".format(tweet))
     except TwitterHTTPError as e:
         for error in e.response_data['errors']:
             ctx.respond("Twitter returned error: {}".format(error['message']))
@@ -166,49 +131,11 @@ def unfollow(ctx, user):
         for error in e.response_data['errors']:
             ctx.respond("Twitter returned error: {}".format(error['message']))
 
-def memorize_id(ctx, id):
-    ids = ctx.storage.ids
-    suffix = id[-2:]
-    if not suffix in ids:
-        ids[suffix] = set()
-    ids[suffix].add(id)
-
-def parse_tweet_id(ctx, id):
-    """
-    Attempt to resolve a tweet ID.
-    """
-    last = ctx.storage.last
-    ids = ctx.storage.ids
-
-    if id == "last":
-        if last is not None:
-            return last["id_str"]
-
-        ctx.respond("I haven't seen any tweets yet!")
-        return None
-
-    if len(id) < 2:
-        ctx.respond("Enter at least 2 digits!")
-        return None
-
-    suffix = id[-2:]
-    if suffix in ids:
-        matching = [x for x in ids[suffix] if x.endswith(id)]
-        # Return error if ambiguous, found ID if unambiguous, and the original
-        # string if not found. Just in case.
-        if len(matching) > 1:
-            ctx.respond("ID could not unambiguously be resolved! Try a longer prefix.")
-            return None
-        elif len(matching) == 1:
-            return matching[0]
-
-    return id
-
 # Truncate to max_length-3, breaking a word if the space-truncated string is
 # less than this proportion of the maximum.
 TRUNCATE_FORCE_BREAK_WORD_SPACE_THRESHOLD = 0.7
 TRUNCATE_BREAK_POINTS = ' _-/'
-def truncate(message, max_length=140):
+def truncate(message, max_length=280):
     if len(message) > max_length:
         hard_max = message[:max_length]
         highest_break = max(hard_max.rfind(ch) for ch in TRUNCATE_BREAK_POINTS)
@@ -219,60 +146,3 @@ def truncate(message, max_length=140):
         else:
             message = truncated
     return message
-
-def _follow_userstream(ctx):
-    o = ctx.config.oauth._fields
-    stream = TwitterStream(auth=twitter.OAuth(**o), domain="userstream.twitter.com", block=False)
-
-    reconnect_seconds = [2, 10, 60, 300]
-    reconnect_tries = 0
-
-    while ctx.storage.active:
-        try:
-            for msg in stream.user():
-                if msg is not None:
-                    service.logger.debug(str(msg))
-
-                    # Twitter signals start of stream with the "friends" message.
-                    if 'friends' in msg:
-                        _announce(ctx, "\x02twitter:\x02 This channel is now streaming Twitter in real-time.")
-                        reconnect_tries = 0
-                    elif 'text' in msg and 'user' in msg:
-                        memorize_id(ctx, msg["id_str"])
-                        ctx.storage.last = msg
-
-                        url_format = "(https://twitter.com/{0[user][screen_name]}/status/{0[id_str]})"
-                        if 'retweeted_status' in msg:
-                            text = "\x02[@{0[user][screen_name]} RT @{0[retweeted_status][user][screen_name]}]\x02 {0[retweeted_status][text]} " + url_format
-                        else:
-                            text = "\x02[@{0[user][screen_name]}]\x02 {0[text]} " + url_format
-
-                        _announce(ctx, text.format(msg))
-                else:
-                    time.sleep(.5)
-
-                if not ctx.storage.active:
-                    return
-
-            _announce(ctx, "\x02twitter:\x02 Twitter userstream connection lost! Waiting {time} seconds to reconnect.".format(
-                            time=reconnect_seconds[reconnect_tries]
-                        ))
-        except Exception as e:
-            _announce(ctx, "\x02twitter:\x02 Exception thrown while following userstream! Waiting {time} seconds to reconnect.".format(
-                            time=reconnect_seconds[reconnect_tries]
-                        ))
-            _announce(ctx, "↳ {name}: {info}".format(
-                            name=e.__class__.__name__,
-                            info=str(e)
-                        ))
-
-        time.sleep(reconnect_seconds[reconnect_tries])
-        reconnect_tries += 1
-
-def _announce(ctx, text):
-    text = text.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
-
-    for announce in ctx.config.announce:
-        if announce.client in ctx.bot.clients:
-            ctx.bot.clients[announce.client].message(announce.channel, text)
-
