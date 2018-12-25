@@ -119,6 +119,31 @@ def nichi(ctx, text=None):
         new_text += c
     ctx.message(new_text)
 
+@service.command(r"!spongebob(?: (?P<text>.+))?")
+def spongebob(ctx, text=None):
+    """
+    ReCrEatIonaL dRugS And heAVY aLcoHOl CONsUMpTIoN HAVe bEEn nORmal aMOng YOUNg pEOPle THE laST haLf cenTUry
+    """
+    if text is None:
+        if len(ctx.client.backlogs[ctx.target]) == 1:
+            return
+
+        _, text = ctx.client.backlogs[ctx.target][1]
+
+    new_text = ''
+    run_length = 1
+    current_transform = str.upper if random() < 0.5 else str.lower
+    for c in text:
+        new_text += current_transform(c)
+
+        if random() > 0.75 ** (run_length * 1.5):
+            current_transform = str.upper if current_transform is str.lower else str.lower
+            run_length = 1
+        else:
+            run_length += 1
+
+    ctx.message(new_text)
+
 RIN_REGEX = re.compile(r"(?:\b([A-Za-z0-9_'-]+) )?\b([A-Za-z0-9_'-]+) in([A-Za-z0-9_-]+)")
 RIN_IGNORE = set(['to', 'ternet'])
 RIN_CACHE = []
