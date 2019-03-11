@@ -5,7 +5,6 @@ Broadcasts a Twitter user's timeline into IRC. Provides tweeting capabilities as
 Markov-chain text generation with a compatible Brain.
 """
 
-import time
 import twitter
 
 from threading import Thread
